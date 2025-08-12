@@ -1,30 +1,33 @@
+# 🚦 Spring Boot Secure Per-User Rate Limiter
 
-# 🚦 Spring Boot Sliding Window Rate Limiter
-
-A lightweight backend rate-limiting system built using **Java**, **Spring Boot**, and in-memory Java data structures. This project implements a **Sliding Window** algorithm to prevent clients from sending too many requests in a short period of time.
+A secure backend rate-limiting system built using **Java**, **Spring Boot**, and **Spring Security**.  
+This project implements a **Fixed Window** (can be extended to Sliding Window) algorithm with **per-user** limits to protect APIs from abuse.
 
 ---
 
 ## 🧠 What It Does
 
 This backend service:
-- Accepts HTTP requests via a REST API
-- Tracks request frequency using user IP (or can be extended to user ID/session)
-- Uses a **sliding window algorithm** to limit requests (e.g., 5 requests per minute)
-- Returns `429 Too Many Requests` if the limit is exceeded
+- Authenticates users using **Spring Security** with **BCrypt password hashing**
+- Tracks request frequency **per authenticated user** (not just IP)
+- Uses an **interceptor** to enforce request limits before hitting the controller
+- Returns `429 Too Many Requests` if a user exceeds the limit
+- Allows **role-based access control** for different endpoints
 
 ---
 
 ## ⚙️ Technologies Used
 
-| Tech            | Purpose                         |
-|-----------------|---------------------------------|
-| Java 17+        | Programming language            |
-| Spring Boot     | REST API and lifecycle          |
-| Spring MVC      | Interceptor for request control |
-| In-Memory Map   | Store user request logs         |
-| Deque (Queue)   | Track timestamps per user       |
-| Maven           | Build system                    |
+| Tech            | Purpose                                     |
+|-----------------|---------------------------------------------|
+| Java 17+        | Programming language                        |
+| Spring Boot     | REST API framework                          |
+| Spring Security | Authentication & authorization              |
+| Spring MVC      | Interceptor for request rate limiting       |
+| Spring Data JPA | Database access for storing users           |
+| BCrypt          | Password hashing for secure storage         |
+| Maven           | Build system                                |
+| H2 Database     | In-memory DB for demo purposes              |
 
 ---
 
@@ -35,24 +38,40 @@ src/
  └── main/
      └── java/
          └── com.example.ratelimiter/
-             ├── controller/RateLimitController.java
-             ├── interceptor/RateLimitInterceptor.java
-             ├── service/RateLimitService.java
-             ├── config/WebConfig.java
-             └── model/RequestInfo.java
+             ├── controller/
+             │    ├── RateLimitController.java
+             │    └── AdminController.java
+             ├── interceptor/
+             │    └── RateLimitInterceptor.java
+             ├── service/
+             │    ├── RateLimitService.java
+             │    ├── myUserDetailService.java
+             │    └── UserService.java
+             ├── config/
+             │    ├── SecurityConfiguration.java
+             │    └── WebConfig.java
+             ├── model/
+             │    ├── RequestInfo.java
+             │    └── Users.java
+             └── repository/
+                  ├── RateLimitRepository.java
+                  └── UserDetailsRepo.java
 ```
 
 ---
 
-## 🧪 How the Sliding Window Algorithm Works
+## 🔐 How Per-User Rate Limiting Works
 
-1. Each user/IP has a queue of timestamps.
-2. On each new request:
-   - Remove timestamps older than 60 seconds
-   - If queue has less than 5 requests → allow and add new timestamp
-   - Else → reject with `429`
+1. User logs in with a username & password (stored securely with BCrypt)
+2. `RateLimitInterceptor` gets the username from:
+   ```java
+   SecurityContextHolder.getContext().getAuthentication().getName();
+   ```
+3. `RateLimitService` checks if the user exceeded the allowed requests in the time window
+4. If within limit → request proceeds  
+   If over limit → returns `429 Too Many Requests`
 
-✅ This ensures **accurate**, **smooth**, and **time-based** rate limiting.
+✅ This ensures **fair API usage** and **security per authenticated user**.
 
 ---
 
@@ -61,8 +80,8 @@ src/
 ### 1. Clone the Repo
 
 ```bash
-git clone https://github.com/Bala-new/springboot-rate-limiter.git
-cd springboot-rate-limiter
+git clone https://github.com/Bala-new/springboot-rate-limiter-secure.git
+cd springboot-rate-limiter-secure
 ```
 
 ### 2. Run the App
@@ -72,28 +91,31 @@ Using Maven wrapper:
 ./mvnw spring-boot:run
 ```
 
-Or using your IDE (IntelliJ, VS Code) with the main class.
+Or run the `main` class from your IDE.
 
 ---
 
-## 🔎 Sample Endpoint
+## 🔎 Sample Endpoints
 
 ```
-GET http://localhost:8080/api/test
+POST /api/admin/add-user
 ```
+- Registers a new user with hashed password
 
-- Returns `200 OK` if under limit
-- Returns `429 Too Many Requests` if over limit
+```
+GET /api/test
+```
+- Rate-limited per user (max X requests per minute)
 
 ---
 
 ## 🧩 Possible Extensions
 
-- 🔐 Per-user rate limit (JWT/session-based)
-- 🧠 Per-endpoint rate limits (based on URI)
-- 📊 Logging + metrics (Prometheus, Actuator)
-- 🧪 Unit tests for service/interceptor
-- ☁️ Redis-backed distributed rate limiting
+- ⏳ Switch to **Sliding Window** algorithm for smoother limits
+- ☁️ Redis-backed distributed rate limiting for multi-instance setups
+- 🛡️ JWT-based stateless authentication
+- 📊 Logging & monitoring with Spring Boot Actuator + Prometheus
+- 🧪 Unit and integration tests for rate limiter and security
 
 ---
 
@@ -106,5 +128,4 @@ This project is open-source and available under the [MIT License](LICENSE).
 ## 👨‍💻 Author
 
 **Balamuruganandham**  
-Feel free to connect:  
 [LinkedIn](https://www.linkedin.com/in/balamuruganandham) • [GitHub](https://github.com/Bala-new)
