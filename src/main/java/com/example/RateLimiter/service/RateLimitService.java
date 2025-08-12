@@ -13,9 +13,9 @@ public class RateLimitService {
     private static final int MAX_REQUESTS = 5;
 
   
-    public boolean isAllowed(String userIp) {
+    public boolean isAllowed(String user) {
         long currentTime = System.currentTimeMillis();
-        Deque<Long> timeStamps=requestinfoMap.getOrDefault(userIp, new ArrayDeque<>());
+        Deque<Long> timeStamps=requestinfoMap.getOrDefault(user, new ArrayDeque<>());
 
         while(!timeStamps.isEmpty() && currentTime - timeStamps.peekFirst() > WINDOW_SIZE_MS) {
             timeStamps.pollFirst();
@@ -24,7 +24,7 @@ public class RateLimitService {
 
         if (timeStamps.size() < MAX_REQUESTS) {
             timeStamps.addLast(currentTime);
-            requestinfoMap.put(userIp,timeStamps);
+            requestinfoMap.put(user,timeStamps);
             return true;
         } 
 
